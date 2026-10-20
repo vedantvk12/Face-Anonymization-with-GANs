@@ -4,14 +4,34 @@ import Workspace from './pages/Workspace';
 import EvaluationPage from './pages/EvaluationPage';
 import About from './pages/About';
 import { useEffect, useState } from 'react';
-import { getHealth } from './services/api';
+import { DEFAULT_HEALTH_STATUS, getHealth } from './services/api';
 import type { HealthStatus } from './services/api';
 
 const Layout = () => {
-  const [health, setHealth] = useState<HealthStatus | null>(null);
+  const [health, setHealth] = useState<HealthStatus>(DEFAULT_HEALTH_STATUS);
 
   useEffect(() => {
-    getHealth().then(setHealth).catch(console.error);
+    let active = true;
+
+    const refreshHealth = async () => {
+      try {
+        const result = await getHealth();
+        if (active) setHealth(result);
+      } catch (error) {
+        console.error('Health check failed:', error);
+        if (active) {
+          setHealth({ ...DEFAULT_HEALTH_STATUS, status: 'offline', message: 'Backend unavailable' });
+        }
+      }
+    };
+
+    refreshHealth();
+    const interval = window.setInterval(refreshHealth, 5000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, []);
 
   return (

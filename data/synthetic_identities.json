@@ -1,0 +1,106 @@
+[
+  {
+    "id": "realistic_alex",
+    "name": "Alex",
+    "style": "realistic",
+    "description": "Photorealistic neutral studio persona (female, brunette)",
+    "file": "realistic_alex.jpg",
+    "thumbnail": "/api/identities/thumbnail/realistic_alex_thumb.jpg"
+  },
+  {
+    "id": "realistic_marcus",
+    "name": "Marcus",
+    "style": "realistic",
+    "description": "Photorealistic executive persona (male, navy suit)",
+    "file": "realistic_marcus.jpg",
+    "thumbnail": "/api/identities/thumbnail/realistic_marcus_thumb.jpg"
+  },
+  {
+    "id": "realistic_elena",
+    "name": "Elena",
+    "style": "realistic",
+    "description": "Photorealistic natural portrait persona (female, long hair)",
+    "file": "realistic_elena.jpg",
+    "thumbnail": "/api/identities/thumbnail/realistic_elena_thumb.jpg"
+  },
+  {
+    "id": "realistic_clara",
+    "name": "Clara",
+    "style": "realistic",
+    "description": "Photorealistic bright studio persona (female, blonde)",
+    "file": "realistic_clara.jpg",
+    "thumbnail": "/api/identities/thumbnail/realistic_clara_thumb.jpg"
+  },
+  {
+    "id": "realistic_liam",
+    "name": "Liam",
+    "style": "realistic",
+    "description": "Photorealistic casual portrait persona (male, athletic)",
+    "file": "realistic_liam.jpg",
+    "thumbnail": "/api/identities/thumbnail/realistic_liam_thumb.jpg"
+  },
+  {
+    "id": "realistic_sophia",
+    "name": "Sophia",
+    "style": "realistic",
+    "description": "Photorealistic warm smiling portrait (female, hazel eyes)",
+    "file": "realistic_sophia.jpg",
+    "thumbnail": "/api/identities/thumbnail/realistic_sophia_thumb.jpg"
+  },
+  {
+    "id": "realistic_olivia",
+    "name": "Olivia",
+    "style": "realistic",
+    "description": "Photorealistic elegant portrait with headwear (female)",
+    "file": "realistic_olivia.jpg",
+    "thumbnail": "/api/identities/thumbnail/realistic_olivia_thumb.jpg"
+  },
+  {
+    "id": "realistic_maya",
+    "name": "Maya R.",
+    "style": "realistic",
+    "description": "Photorealistic smiling studio portrait (female, warm)",
+    "file": "realistic_maya.jpg",
+    "thumbnail": "/api/identities/thumbnail/realistic_maya_thumb.jpg"
+  },
+  {
+    "id": "cartoon_finn",
+    "name": "Finn",
+    "style": "cartoon",
+    "description": "3D animated cel persona (Pixar-style male)",
+    "file": "cartoon_finn.jpg",
+    "thumbnail": "/api/identities/thumbnail/cartoon_finn_thumb.jpg"
+  },
+  {
+    "id": "cartoon_leo",
+    "name": "Leo",
+    "style": "cartoon",
+    "description": "Graphic novel comic stylized persona (male)",
+    "file": "cartoon_leo.jpg",
+    "thumbnail": "/api/identities/thumbnail/cartoon_leo_thumb.jpg"
+  },
+  {
+    "id": "cartoon_maya",
+    "name": "Maya C.",
+    "style": "cartoon",
+    "description": "Graphic novel comic stylized persona (female)",
+    "file": "cartoon_maya.jpg",
+    "thumbnail": "/api/identities/thumbnail/cartoon_maya_thumb.jpg"
+  },
+  {
+    "id": "anime_hikari",
+    "name": "Hikari",
+    "style": "anime",
+    "description": "Cel-shaded Japanese anime persona (female)",
+    "file": "anime_hikari.jpg",
+    "thumbnail": "/api/identities/thumbnail/anime_hikari_thumb.jpg"
+  },
+  {
+    "id": "anime_ren",
+    "name": "Ren",
+    "style": "anime",
+    "description": "Cel-shaded Japanese manga hero persona (male)",
+    "file": "anime_ren.jpg",
+    "thumbnail": "/api/identities/thumbnail/anime_ren_thumb.jpg"
+  }
+]

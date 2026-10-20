@@ -3,6 +3,15 @@ import os
 import glob
 import time
 import insightface
+import sys
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BACKEND_DIR = os.path.join(ROOT_DIR, "backend")
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
+from services.face_blending import swap_face_anatomical
+from services.models import detect_execution_providers
 
 
 # ============================================================
@@ -122,9 +131,12 @@ print(f"Source image size: {source.shape[1]} x {source.shape[0]}")
 
 print("\nLoading InsightFace...")
 
+providers, prov_name = detect_execution_providers()
+print(f"Hardware execution provider: {prov_name} {providers}")
+
 app = insightface.app.FaceAnalysis(
     name="buffalo_l",
-    providers=["CPUExecutionProvider"]
+    providers=providers
 )
 
 app.prepare(
@@ -146,7 +158,7 @@ start_time = time.time()
 swapper = insightface.model_zoo.get_model(
     MODEL_PATH,
     download=False,
-    providers=["CPUExecutionProvider"]
+    providers=providers
 )
 
 print(
@@ -265,12 +277,21 @@ for i, target_face in enumerate(target_faces):
         f"{i + 1}/{len(target_faces)}..."
     )
 
-    result = swapper.get(
-        result,
-        target_face,
-        source_face,
-        paste_back=True
-    )
+    try:
+        result, _ = swap_face_anatomical(
+            swapper,
+            result,
+            target_face,
+            source_face
+        )
+    except Exception as e:
+        print(f"Anatomical blend exception ({e}), falling back to default paste_back.")
+        result = swapper.get(
+            result,
+            target_face,
+            source_face,
+            paste_back=True
+        )
 
 
 processing_time = time.time() - start_time

@@ -4,3 +4,5 @@ python-multipart
 opencv-python
 numpy
 insightface
+onnxruntime-directml
+imageio-ffmpeg
