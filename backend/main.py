@@ -52,7 +52,7 @@ ALLOWED_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
 ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi"}
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {
         "status": "online",
@@ -63,7 +63,7 @@ def root():
     }
 
 
-@app.get("/api/health")
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def health_check():
     return get_system_status()
 

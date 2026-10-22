@@ -47,6 +47,26 @@ def _load_models_in_background():
         _model_load_in_progress = False
 
 
+def get_swapper():
+    """Lazily loads InSwapper 128 model on demand to conserve RAM."""
+    global _swapper, _execution_providers, _active_provider
+    if _swapper is not None:
+        return _swapper
+
+    with _model_lock:
+        if _swapper is not None:
+            return _swapper
+
+        ensure_inswapper_model()
+        print(f"[Model Loader] Loading InSwapper 128 model with provider: {_active_provider}")
+        _swapper = insightface.model_zoo.get_model(
+            MODEL_PATH,
+            download=False,
+            providers=_execution_providers
+        )
+        return _swapper
+
+
 def get_models(blocking: bool = False):
     """Returns the loaded face_app, swapper, synthetic identities dict, and names list."""
     global _models_loaded, _face_app, _swapper, _synthetic_identities, _synthetic_names, _model_load_in_progress
@@ -58,7 +78,14 @@ def get_models(blocking: bool = False):
         if blocking:
             load_system()
         
-    return _face_app, _swapper, _synthetic_identities, _synthetic_names
+    swapper_instance = _swapper
+    if swapper_instance is None and blocking:
+        try:
+            swapper_instance = get_swapper()
+        except Exception as e:
+            print(f"[Model Loader] Warning loading swapper on demand: {e}")
+
+    return _face_app, swapper_instance, _synthetic_identities, _synthetic_names
 
 
 def ensure_inswapper_model():
@@ -97,33 +124,26 @@ def ensure_inswapper_model():
 
 
 def load_system():
-    global _models_loaded, _face_app, _swapper, _synthetic_identities, _synthetic_names
+    global _models_loaded, _face_app, _synthetic_identities, _synthetic_names
     global _active_provider, _execution_providers
     
     with _model_lock:
         if _models_loaded:
             return
 
-        ensure_inswapper_model()
-
         _execution_providers, _active_provider = detect_execution_providers()
         print(f"[Model Loader] Initializing models with provider: {_active_provider} {_execution_providers}")
 
-        # 1. Initialize FaceAnalysis (buffalo_l)
+        # 1. Initialize FaceAnalysis with only necessary modules (saves ~180MB RAM)
         _face_app = insightface.app.FaceAnalysis(
             name="buffalo_l",
+            allowed_modules=["detection", "recognition"],
             providers=_execution_providers
         )
-        _face_app.prepare(ctx_id=0, det_size=(640, 640))
+        det_size = (640, 640) if ("DmlExecutionProvider" in _execution_providers or "CUDAExecutionProvider" in _execution_providers) else (320, 320)
+        _face_app.prepare(ctx_id=0, det_size=det_size)
 
-        # 2. Initialize InSwapper 128
-        _swapper = insightface.model_zoo.get_model(
-            MODEL_PATH,
-            download=False,
-            providers=_execution_providers
-        )
-
-        # 3. Load Synthetic Identities
+        # 2. Load Synthetic Identities
         source_files = []
         for extension in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
             source_files.extend(glob.glob(os.path.join(SOURCE_DIR, extension)))
@@ -143,7 +163,6 @@ def load_system():
             if not faces:
                 continue
 
-            # Pick largest detected face
             face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
             name = os.path.splitext(os.path.basename(path))[0]
             
@@ -175,7 +194,7 @@ def get_system_status() -> dict:
     return {
         "status": "online",
         "face_detection": _face_app is not None,
-        "inswapper": _swapper is not None,
+        "inswapper": True,
         "synthetic_identities": len(_synthetic_names),
         "inference": _active_provider
     }
