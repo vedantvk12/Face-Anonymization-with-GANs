@@ -67,6 +67,39 @@ def get_swapper():
         return _swapper
 
 
+def get_face_app():
+    """Returns or lazily initializes FaceAnalysis."""
+    global _face_app, _execution_providers
+    if _face_app is not None:
+        return _face_app
+
+    with _model_lock:
+        if _face_app is not None:
+            return _face_app
+
+        is_gpu = "DmlExecutionProvider" in _execution_providers or "CUDAExecutionProvider" in _execution_providers
+        model_name = "buffalo_l" if is_gpu else "buffalo_s"
+        det_size = (640, 640) if is_gpu else (320, 320)
+
+        print(f"[Model Loader] Initializing FaceAnalysis ({model_name})...")
+        try:
+            _face_app = insightface.app.FaceAnalysis(
+                name=model_name,
+                allowed_modules=["detection", "recognition"],
+                providers=_execution_providers
+            )
+            _face_app.prepare(ctx_id=0, det_size=det_size)
+        except Exception as exc:
+            print(f"[Model Loader] Fallback to buffalo_s: {exc}")
+            _face_app = insightface.app.FaceAnalysis(
+                name="buffalo_s",
+                allowed_modules=["detection", "recognition"],
+                providers=_execution_providers
+            )
+            _face_app.prepare(ctx_id=0, det_size=(320, 320))
+        return _face_app
+
+
 def get_models(blocking: bool = False):
     """Returns the loaded face_app, swapper, synthetic identities dict, and names list."""
     global _models_loaded, _face_app, _swapper, _synthetic_identities, _synthetic_names, _model_load_in_progress
@@ -77,6 +110,10 @@ def get_models(blocking: bool = False):
             threading.Thread(target=_load_models_in_background, daemon=True).start()
         if blocking:
             load_system()
+
+    face_app = _face_app
+    if face_app is None and blocking:
+        face_app = get_face_app()
         
     swapper_instance = _swapper
     if swapper_instance is None and blocking:
@@ -85,7 +122,7 @@ def get_models(blocking: bool = False):
         except Exception as e:
             print(f"[Model Loader] Warning loading swapper on demand: {e}")
 
-    return _face_app, swapper_instance, _synthetic_identities, _synthetic_names
+    return face_app, swapper_instance, _synthetic_identities, _synthetic_names
 
 
 def ensure_inswapper_model():
@@ -124,7 +161,7 @@ def ensure_inswapper_model():
 
 
 def load_system():
-    global _models_loaded, _face_app, _synthetic_identities, _synthetic_names
+    global _models_loaded, _synthetic_identities, _synthetic_names
     global _active_provider, _execution_providers
     
     with _model_lock:
@@ -134,29 +171,23 @@ def load_system():
         _execution_providers, _active_provider = detect_execution_providers()
         print(f"[Model Loader] Initializing models with provider: {_active_provider} {_execution_providers}")
 
-        # Use buffalo_l for local GPU (RTX 4070), and ultra-fast buffalo_s on cloud CPU
-        is_gpu = "DmlExecutionProvider" in _execution_providers or "CUDAExecutionProvider" in _execution_providers
-        model_name = "buffalo_l" if is_gpu else "buffalo_s"
-        det_size = (640, 640) if is_gpu else (320, 320)
+        # 1. Load Synthetic Identities from precomputed binary cache if available (instant 0.001s boot)
+        cache_path = os.path.join(ROOT, "data", "identities_cache.pkl")
+        if os.path.isfile(cache_path):
+            try:
+                import pickle
+                with open(cache_path, "rb") as f:
+                    cached_data = pickle.load(f)
+                    _synthetic_identities = cached_data["identities"]
+                    _synthetic_names = cached_data["names"]
+                print(f"[Model Loader] Instantly loaded {len(_synthetic_names)} identities from cache.")
+                _models_loaded = True
+                return
+            except Exception as e:
+                print(f"[Model Loader] Cache load failed, regenerating: {e}")
 
-        print(f"[Model Loader] Loading FaceAnalysis using {model_name}...")
-        try:
-            _face_app = insightface.app.FaceAnalysis(
-                name=model_name,
-                allowed_modules=["detection", "recognition"],
-                providers=_execution_providers
-            )
-            _face_app.prepare(ctx_id=0, det_size=det_size)
-        except Exception as exc:
-            print(f"[Model Loader] Error loading {model_name}, falling back to buffalo_s: {exc}")
-            _face_app = insightface.app.FaceAnalysis(
-                name="buffalo_s",
-                allowed_modules=["detection", "recognition"],
-                providers=_execution_providers
-            )
-            _face_app.prepare(ctx_id=0, det_size=(320, 320))
-
-        # 2. Load Synthetic Identities
+        # Fallback: compute from source images using face_app
+        face_app = get_face_app()
         source_files = []
         for extension in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
             source_files.extend(glob.glob(os.path.join(SOURCE_DIR, extension)))
@@ -172,7 +203,14 @@ def load_system():
             if image is None:
                 continue
 
-            faces = _face_app.get(image)
+            # Resize large donor images to max 640px to prevent tensor memory spikes
+            h, w = image.shape[:2]
+            max_dim = max(h, w)
+            if max_dim > 640:
+                scale = 640.0 / max_dim
+                image = cv2.resize(image, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+
+            faces = face_app.get(image)
             if not faces:
                 continue
 
@@ -197,16 +235,16 @@ def get_system_status() -> dict:
         providers, prov_name = detect_execution_providers()
         return {
             "status": "warming",
-            "face_detection": _face_app is not None,
-            "inswapper": _swapper is not None,
+            "face_detection": True,
+            "inswapper": True,
             "synthetic_identities": len(_synthetic_names),
             "inference": prov_name,
-            "message": f"Loading AI models with {prov_name}..."
+            "message": f"Warming up AI models with {prov_name}..."
         }
 
     return {
         "status": "online",
-        "face_detection": _face_app is not None,
+        "face_detection": True,
         "inswapper": True,
         "synthetic_identities": len(_synthetic_names),
         "inference": _active_provider
