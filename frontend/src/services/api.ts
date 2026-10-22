@@ -5,6 +5,7 @@ export const API_URL = rawApiUrl.replace(/\/+$/, '');
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 15000,
 });
 
 export interface HealthStatus {
@@ -21,8 +22,8 @@ export const DEFAULT_HEALTH_STATUS: HealthStatus = {
   face_detection: false,
   inswapper: false,
   synthetic_identities: 0,
-  inference: 'GPU (DirectML)',
-  message: 'Initializing AI models...'
+  inference: 'AI Engine',
+  message: 'Connecting to AI backend...'
 };
 
 export interface SyntheticIdentity {

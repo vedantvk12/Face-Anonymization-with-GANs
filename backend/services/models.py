@@ -134,14 +134,27 @@ def load_system():
         _execution_providers, _active_provider = detect_execution_providers()
         print(f"[Model Loader] Initializing models with provider: {_active_provider} {_execution_providers}")
 
-        # 1. Initialize FaceAnalysis with only necessary modules (saves ~180MB RAM)
-        _face_app = insightface.app.FaceAnalysis(
-            name="buffalo_l",
-            allowed_modules=["detection", "recognition"],
-            providers=_execution_providers
-        )
-        det_size = (640, 640) if ("DmlExecutionProvider" in _execution_providers or "CUDAExecutionProvider" in _execution_providers) else (320, 320)
-        _face_app.prepare(ctx_id=0, det_size=det_size)
+        # Use buffalo_l for local GPU (RTX 4070), and ultra-fast buffalo_s on cloud CPU
+        is_gpu = "DmlExecutionProvider" in _execution_providers or "CUDAExecutionProvider" in _execution_providers
+        model_name = "buffalo_l" if is_gpu else "buffalo_s"
+        det_size = (640, 640) if is_gpu else (320, 320)
+
+        print(f"[Model Loader] Loading FaceAnalysis using {model_name}...")
+        try:
+            _face_app = insightface.app.FaceAnalysis(
+                name=model_name,
+                allowed_modules=["detection", "recognition"],
+                providers=_execution_providers
+            )
+            _face_app.prepare(ctx_id=0, det_size=det_size)
+        except Exception as exc:
+            print(f"[Model Loader] Error loading {model_name}, falling back to buffalo_s: {exc}")
+            _face_app = insightface.app.FaceAnalysis(
+                name="buffalo_s",
+                allowed_modules=["detection", "recognition"],
+                providers=_execution_providers
+            )
+            _face_app.prepare(ctx_id=0, det_size=(320, 320))
 
         # 2. Load Synthetic Identities
         source_files = []
