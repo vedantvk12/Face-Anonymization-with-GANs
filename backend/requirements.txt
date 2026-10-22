@@ -1,8 +1,10 @@
 fastapi
 uvicorn
 python-multipart
-opencv-python
+opencv-python-headless
 numpy
+onnx
 insightface
-onnxruntime-directml
+onnxruntime-directml; sys_platform == 'win32'
+onnxruntime; sys_platform != 'win32'
 imageio-ffmpeg

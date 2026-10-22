@@ -1,9 +1,16 @@
 import os
+import sys
 import cv2
 import uuid
 import time
 import threading
 import numpy as np
+
+# Ensure backend directory is in sys.path so 'services.*' imports work from anywhere
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
@@ -43,6 +50,17 @@ os.makedirs(TEMP_UPLOADS_DIR, exist_ok=True)
 
 ALLOWED_IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
 ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".avi"}
+
+
+@app.get("/")
+def root():
+    return {
+        "status": "online",
+        "service": "PRIVAI Enterprise API",
+        "version": "2.0.0",
+        "docs": "/docs",
+        "health": "/api/health"
+    }
 
 
 @app.get("/api/health")

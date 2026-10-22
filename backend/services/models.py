@@ -61,6 +61,41 @@ def get_models(blocking: bool = False):
     return _face_app, _swapper, _synthetic_identities, _synthetic_names
 
 
+def ensure_inswapper_model():
+    """Ensures the InSwapper ONNX model is downloaded and valid (>50MB)."""
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    if not os.path.isfile(MODEL_PATH) or os.path.getsize(MODEL_PATH) < 50 * 1024 * 1024:
+        print(f"[Model Loader] InSwapper 128 model missing or incomplete ({MODEL_PATH}).")
+        print("[Model Loader] Downloading inswapper_128.onnx from CDN mirror...")
+        import urllib.request
+        url = "https://huggingface.co/ezioruan/inswapper_128.onnx/resolve/main/inswapper_128.onnx"
+        tmp_path = MODEL_PATH + ".tmp"
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req) as response, open(tmp_path, 'wb') as out_file:
+                total_size = int(response.info().get('Content-Length', 0))
+                downloaded = 0
+                chunk_size = 1024 * 1024 * 4  # 4MB chunks
+                while True:
+                    chunk = response.read(chunk_size)
+                    if not chunk:
+                        break
+                    out_file.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0:
+                        percent = (downloaded / total_size) * 100
+                        print(f"  Downloading InSwapper: {percent:.1f}% ({downloaded // (1024*1024)}MB / {total_size // (1024*1024)}MB)", end="\r")
+            print("\n[Model Loader] Download complete. Validating...")
+            if os.path.exists(MODEL_PATH):
+                os.remove(MODEL_PATH)
+            os.rename(tmp_path, MODEL_PATH)
+            print(f"[Model Loader] Successfully saved to {MODEL_PATH}")
+        except Exception as e:
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+            raise RuntimeError(f"Failed to automatically download InSwapper model: {e}")
+
+
 def load_system():
     global _models_loaded, _face_app, _swapper, _synthetic_identities, _synthetic_names
     global _active_provider, _execution_providers
@@ -69,8 +104,7 @@ def load_system():
         if _models_loaded:
             return
 
-        if not os.path.isfile(MODEL_PATH):
-            raise FileNotFoundError(f"InSwapper model not found: {MODEL_PATH}")
+        ensure_inswapper_model()
 
         _execution_providers, _active_provider = detect_execution_providers()
         print(f"[Model Loader] Initializing models with provider: {_active_provider} {_execution_providers}")

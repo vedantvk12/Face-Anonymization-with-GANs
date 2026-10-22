@@ -1,0 +1,29 @@
+# Virtual Environments & Caches
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Git
+.git/
+.gitignore
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Output and temp files
+output/api_results/*
+output/temp_uploads/*
+!output/api_results/.gitkeep
+!output/temp_uploads/.gitkeep
+
+# Large local files
+models/inswapper/inswapper_128.onnx
+deep_privacy2/
+experiments/
