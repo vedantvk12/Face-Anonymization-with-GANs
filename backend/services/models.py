@@ -13,7 +13,7 @@ SOURCE_DIR = os.path.join(ROOT, "data", "source_faces")
 
 _models_loaded = False
 _model_load_in_progress = False
-_model_lock = threading.Lock()
+_model_lock = threading.RLock()
 
 _face_app = None
 _swapper = None
@@ -171,20 +171,29 @@ def load_system():
         _execution_providers, _active_provider = detect_execution_providers()
         print(f"[Model Loader] Initializing models with provider: {_active_provider} {_execution_providers}")
 
-        # 1. Load Synthetic Identities from precomputed binary cache if available (instant 0.001s boot)
-        cache_path = os.path.join(ROOT, "data", "identities_cache.pkl")
-        if os.path.isfile(cache_path):
+        # 1. Load Synthetic Identities from precomputed NPZ cache if available (instant 0.001s boot)
+        npz_path = os.path.join(ROOT, "data", "identities_cache.npz")
+        if os.path.isfile(npz_path):
             try:
-                import pickle
-                with open(cache_path, "rb") as f:
-                    cached_data = pickle.load(f)
-                    _synthetic_identities = cached_data["identities"]
-                    _synthetic_names = cached_data["names"]
-                print(f"[Model Loader] Instantly loaded {len(_synthetic_names)} identities from cache.")
+                import numpy as np
+                from insightface.app.common import Face
+                npz = np.load(npz_path)
+                cached_names = [str(n) for n in npz["names"]]
+                loaded_identities = {}
+                for name in cached_names:
+                    loaded_identities[name] = Face({
+                        "bbox": npz[f"{name}_bbox"],
+                        "kps": npz[f"{name}_kps"],
+                        "embedding": npz[f"{name}_embedding"],
+                        "det_score": float(npz[f"{name}_det_score"])
+                    })
+                _synthetic_identities = loaded_identities
+                _synthetic_names = cached_names
                 _models_loaded = True
+                print(f"[Model Loader] Instantly loaded {len(_synthetic_names)} identities from NPZ cache.")
                 return
             except Exception as e:
-                print(f"[Model Loader] Cache load failed, regenerating: {e}")
+                print(f"[Model Loader] NPZ cache load failed, regenerating: {e}")
 
         # Fallback: compute from source images using face_app
         face_app = get_face_app()
