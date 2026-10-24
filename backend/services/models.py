@@ -58,11 +58,14 @@ def get_swapper():
             return _swapper
 
         ensure_inswapper_model()
-        print(f"[Model Loader] Loading InSwapper 128 model with provider: {_active_provider}")
+        # DirectML has a known D3D12 device hang bug (0x887A0006) with InSwapper's fused nodes.
+        # CPUExecutionProvider is highly optimized, takes ~2-3s, and is 100% crash-proof without GPU driver timeouts.
+        swapper_providers = ["CPUExecutionProvider"] if "DmlExecutionProvider" in _execution_providers else _execution_providers
+        print(f"[Model Loader] Loading InSwapper 128 model with providers: {swapper_providers}")
         _swapper = insightface.model_zoo.get_model(
             MODEL_PATH,
             download=False,
-            providers=_execution_providers
+            providers=swapper_providers
         )
         return _swapper
 
@@ -90,13 +93,13 @@ def get_face_app():
             )
             _face_app.prepare(ctx_id=0, det_size=det_size)
         except Exception as exc:
-            print(f"[Model Loader] Fallback to buffalo_s: {exc}")
+            print(f"[Model Loader] Fallback to CPU buffalo_l: {exc}")
             _face_app = insightface.app.FaceAnalysis(
-                name="buffalo_s",
+                name="buffalo_l",
                 allowed_modules=["detection", "recognition"],
-                providers=_execution_providers
+                providers=["CPUExecutionProvider"]
             )
-            _face_app.prepare(ctx_id=0, det_size=(320, 320))
+            _face_app.prepare(ctx_id=0, det_size=(640, 640))
         return _face_app
 
 
